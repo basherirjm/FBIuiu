@@ -1,0 +1,36 @@
+:root{
+  --bg: #070a0f;
+  --panel:#0e131b;
+  --panel2:#080c12;
+  --border:#223044;
+  --border2:#31445f;
+  --text:#e4edf7;
+  --muted:#7f93ab;
+  --muted2:#b7c7da;
+  --accent:#1f7dff;
+  --accentSoft: rgba(31,125,255,.14);
+  --accent2:#00d18f;
+}
+body{
+  background:
+    radial-gradient(1200px 700px at 20% 10%, rgba(31,125,255,.08), transparent 60%),
+    radial-gradient(900px 600px at 80% 20%, rgba(0,209,143,.06), transparent 55%),
+    var(--bg);
+}
+.scanlines{
+  position: fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:1;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) 3px,
+    rgba(0,0,0,0.05) 4px
+  );
+  mix-blend-mode: overlay;
+  opacity:.35;
+}
+.icon::before, .section::before, .taskbar .start::before, .titlebar::before, .pill::before, .menuitem::before{
+  background: rgba(31,125,255,.65) !important;
+}

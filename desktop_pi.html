@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FBI OS - Desktop (PI)</title>
+  <link rel="stylesheet" href="desktop_base.css">
+  <link rel="stylesheet" href="desktop_pi.css">
+
+  <!-- Anti "flash" avant vérif session -->
+  <style>body{visibility:hidden;}</style>
+</head>
+<body>
+  <div class="background-grid"></div>
+
+  <div class="hud">
+    <div class="hud-left">
+      <div class="hud-logo">FBI OS</div>
+      <div class="hud-sub">PARANORMAL INVESTIGATIONS DESKTOP</div>
+    </div>
+    <div class="hud-right">
+      <div class="pill"><span class="pulse"></span><span>SECURE SESSION</span></div>
+      <div class="pill"><span>AGENT:</span><span id="agent-name">UNKNOWN</span></div>
+      <div class="pill"><span id="hud-time">--/--/---- --:--:--</span></div>
+    </div>
+  </div>
+
+  <div class="desktop" id="desktop">
+    <div class="side">
+      <div class="title">
+        <h3>PI SESSION BRIEF</h3>
+        <div class="tag">PI CLEARANCE</div>
+      </div>
+      <div class="row"><span>MODULE</span><span>DRIVE (SHARED)</span></div>
+      <div class="row"><span>STORAGE</span><span>MYSQL + UPLOADS</span></div>
+      <div class="row"><span>SHARING</span><span>SCOPE: PI / ALL</span></div>
+      <div class="row"><span>LOGS</span><span>SERVER</span></div>
+
+      <div class="actions">
+        <button class="btn" id="btn-lock">Lock</button>
+        <button class="btn" id="btn-logout">Logout</button>
+      </div>
+    </div>
+
+    <div class="icons" id="iconGrid">
+      <div class="icon" data-open="win-drive" tabindex="0">
+        <div class="glyph">#</div>
+        <div class="label">Drive</div>
+        <div class="hint">Folders, text files, uploads</div>
+      </div>
+
+      <div class="icon" data-open="win-editor" tabindex="0">
+        <div class="glyph">Ω</div>
+        <div class="label">Text Editor</div>
+        <div class="hint">Open a file from Drive</div>
+      </div>
+
+      <div class="icon" data-open="win-logs" tabindex="0">
+        <div class="glyph">!</div>
+        <div class="label">Server Logs</div>
+        <div class="hint">Your actions only</div>
+      </div>
+    </div>
+
+    <div class="watermark">PI • UNAUTHORIZED ACCESS PROHIBITED</div>
+
+    <!-- DRIVE -->
+    <div class="window hidden" id="win-drive" style="top:110px; left: 420px; width: 880px; height: 520px;">
+      <div class="titlebar" data-drag>
+        <div class="win-title"><span class="miniicon">#</span> DRIVE</div>
+        <div class="win-controls">
+          <div class="ctl" data-min="win-drive">_</div>
+          <div class="ctl" data-close="win-drive">×</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section">
+          <div class="drive-top">
+            <div class="drive-path" id="drive-path">ROOT</div>
+            <div class="drive-controls">
+              <button class="mini" id="drive-back">BACK</button>
+              <select class="field small" id="drive-scope"></select>
+              <button class="mini" id="drive-newfolder">NEW FOLDER</button>
+              <button class="mini" id="drive-newtext">NEW TEXT</button>
+              <button class="mini" id="drive-upload">UPLOAD</button>
+            </div>
+          </div>
+          <div class="drive-grid">
+            <div>
+              <h4>FOLDERS</h4>
+              <div id="drive-folders"></div>
+            </div>
+            <div>
+              <h4>FILES</h4>
+              <div id="drive-files"></div>
+            </div>
+          </div>
+          <div class="empty" id="drive-status" style="margin-top:10px;">…</div>
+        </div>
+      </div>
+      <div class="resizer" data-resize></div>
+    </div>
+
+    <!-- EDITOR -->
+    <div class="window hidden" id="win-editor" style="top:140px; left: 520px; width: 820px; height: 520px;">
+      <div class="titlebar" data-drag>
+        <div class="win-title"><span class="miniicon">Ω</span> <span id="editor-title">EDITOR</span> <span class="badge" id="editor-scope">--</span><span class="editor-ro" id="editor-ro">READ ONLY</span></div>
+        <div class="win-controls">
+          <div class="ctl" data-min="win-editor">_</div>
+          <div class="ctl" data-close="win-editor">×</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section">
+          <h4>CONTENT</h4>
+          <textarea class="field" id="editor-text" style="height:320px; resize:none;" placeholder="Open a text file from Drive…"></textarea>
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn" id="editor-save">Save</button>
+            <button class="btn" id="editor-rename">Rename</button>
+            <button class="btn" id="editor-delete">Delete</button>
+          </div>
+        </div>
+      </div>
+      <div class="resizer" data-resize></div>
+    </div>
+
+    <!-- LOGS -->
+    <div class="window hidden" id="win-logs" style="top:180px; left: 380px; width: 860px; height: 460px;">
+      <div class="titlebar" data-drag>
+        <div class="win-title"><span class="miniicon">!</span> SERVER LOGS</div>
+        <div class="win-controls">
+          <div class="ctl" data-min="win-logs">_</div>
+          <div class="ctl" data-close="win-logs">×</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section">
+          <h4>FILTER</h4>
+          <div style="display:flex; gap:10px;">
+            <input class="field" id="logs-q" placeholder="Filter (action / meta) …">
+            <button class="btn" style="flex:0 0 180px;" id="logs-refresh">Refresh</button>
+          </div>
+        </div>
+        <div class="section">
+          <h4>OUTPUT</h4>
+          <pre id="logs-out" style="white-space:pre-wrap;"></pre>
+        </div>
+      </div>
+      <div class="resizer" data-resize></div>
+    </div>
+  </div>
+
+  <!-- Start menu -->
+  <div class="startmenu" id="startmenu">
+    <div class="head">
+      <div class="t">PI MENU</div>
+      <div class="tag">SECURE</div>
+    </div>
+    <div class="items">
+      <div class="menuitem" data-open="win-drive"><div class="name">Open Drive</div><div class="desc">Files, folders, uploads</div></div>
+      <div class="menuitem" data-open="win-logs"><div class="name">Open Logs</div><div class="desc">Your server logs</div></div>
+      <div class="menuitem" id="menu-lock"><div class="name">Lock Session</div><div class="desc">Return to login screen</div></div>
+      <div class="menuitem" id="menu-logout"><div class="name">Logout</div><div class="desc">Terminate session</div></div>
+    </div>
+  </div>
+
+  <!-- Taskbar -->
+  <div class="taskbar">
+    <div class="start" id="startbtn">START</div>
+    <div class="tasks" id="tasks"></div>
+    <div class="tray">
+      <span id="tray-agent">AGENT: --</span>
+      <span id="tray-time">--:--:--</span>
+    </div>
+  </div>
+
+  <script>
+    // ---- AUTH via PHP session (NO localStorage) ----
+    async function requireSessionAndBoot(){
+      try{
+        const r = await fetch("api.php?action=me", { credentials: "include" });
+        const j = await r.json();
+
+        if (!j.ok || !j.user) throw new Error("not-auth");
+
+        const role = String(j.user.role || "").toUpperCase();
+        const map = { PI: "desktop_pi.html", MOOT: "desktop_moot.html", IA: "desktop_ia.html" };
+
+        // Mauvais desktop ? -> redirection vers le bon
+        if (role !== "PI"){
+          location.href = map[role] || "index.html";
+          return;
+        }
+
+        // User dispo en mémoire (pas localStorage)
+        window.FBIOS_USER = j.user;
+
+        // UI identity
+        const agent = String(j.user.username || "UNKNOWN").toUpperCase();
+        const el = document.getElementById("agent-name");
+        if (el) el.textContent = agent;
+        const tray = document.getElementById("tray-agent");
+        if (tray) tray.textContent = `AGENT: ${agent}`;
+
+        // Charger os.js seulement après validation session
+        await new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = "os.js";
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+
+        // Boot
+        if (window.FBIOS && typeof window.FBIOS.bootDesktop === "function"){
+          window.FBIOS.bootDesktop("PI", window.FBIOS_USER);
+        }
+
+        // Afficher l’UI une fois ok
+        document.body.style.visibility = "visible";
+      }catch(e){
+        location.href = "index.html";
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", requireSessionAndBoot);
+  </script>
+</body>
+</html>

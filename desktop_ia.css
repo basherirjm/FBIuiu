@@ -1,0 +1,22 @@
+:root{
+  --bg: #070b08;
+  --panel:#0f1511;
+  --panel2:#090d0a;
+  --border:#24352b;
+  --border2:#355140;
+  --text:#e7f3ea;
+  --muted:#7f9a88;
+  --muted2:#bdd2c4;
+  --accent:#1f8b00;
+  --accentSoft: rgba(31,139,0,.14);
+  --accent2:#1f8b00;
+}
+body{
+  background:
+    radial-gradient(1200px 700px at 20% 12%, rgba(31,139,0,.08), transparent 60%),
+    radial-gradient(900px 600px at 80% 20%, rgba(255,211,122,.05), transparent 55%),
+    var(--bg);
+}
+.icon::before, .section::before, .taskbar .start::before, .titlebar::before, .pill::before, .menuitem::before{
+  background: rgba(31,139,0,.70) !important;
+}

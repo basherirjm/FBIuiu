@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FBI OS - Connexion Sécurisée</title>
+  <script src="os.js" defer></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0d0d0d;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      color: #e0e0e0;
+    }
+    .background-grid {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+    }
+    .container {
+      background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+      border: 1px solid #2a2a2a;
+      border-radius: 2px;
+      padding: 50px 45px;
+      width: 480px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      position: relative;
+      z-index: 10;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 35px;
+      padding-bottom: 25px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 300;
+      color: #ffffff;
+      letter-spacing: 12px;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 11px;
+      color: #808080;
+      letter-spacing: 3px;
+      font-weight: 400;
+    }
+    .classified {
+      background: #8b0000;
+      color: #ffffff;
+      padding: 8px 20px;
+      margin: 20px 0 30px 0;
+      text-align: center;
+      font-weight: 600;
+      letter-spacing: 4px;
+      font-size: 12px;
+      box-shadow: 0 0 20px rgba(139, 0, 0, 0.3);
+    }
+    .form-group { margin-bottom: 25px; }
+    label {
+      display: block;
+      margin-bottom: 10px;
+      color: #b0b0b0;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      font-weight: 500;
+    }
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      background: #0a0a0a;
+      border: 1px solid #2a2a2a;
+      color: #ffffff;
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+    input:focus {
+      border-color: #4a4a4a;
+      background: #121212;
+      box-shadow: 0 0 0 3px rgba(74, 74, 74, 0.1);
+    }
+    input::placeholder { color: #404040; }
+    .btn {
+      width: 100%;
+      padding: 16px;
+      background: #1a1a1a;
+      border: 1px solid #3a3a3a;
+      color: #ffffff;
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: all 0.3s ease;
+      margin-top: 15px;
+      text-transform: uppercase;
+    }
+    .btn:hover {
+      background: #252525;
+      border-color: #4a4a4a;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+    .status {
+      margin-top: 25px;
+      padding: 15px;
+      text-align: center;
+      font-size: 11px;
+      color: #808080;
+      border-top: 1px solid #2a2a2a;
+      letter-spacing: 1px;
+      min-height: 44px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 8px;
+    }
+    .status-indicator {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: #8b0000;
+      border-radius: 50%;
+      margin-right: 4px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .warning {
+      margin-top: 25px;
+      padding: 12px;
+      background: rgba(139, 0, 0, 0.1);
+      border: 1px solid #4a0000;
+      color: #b85555;
+      font-size: 10px;
+      text-align: center;
+      letter-spacing: 0.5px;
+      line-height: 1.6;
+    }
+    #timestamp {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      color: #606060;
+      font-size: 11px;
+      letter-spacing: 1px;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="background-grid"></div>
+  <div id="timestamp"></div>
+
+  <div class="container">
+    <div class="header">
+      <div class="logo">FBI OS</div>
+      <div class="subtitle">FEDERAL BUREAU OF INVESTIGATION</div>
+    </div>
+
+    <div class="classified">CLASSIFIED SYSTEM</div>
+
+    <div class="form-group">
+      <label for="agent-id">USERNAME</label>
+      <input type="text" id="agent-id" placeholder="Enter username (ex: RAVEN)" autocomplete="off">
+    </div>
+
+    <div class="form-group">
+      <label for="password">PASSWORD</label>
+      <input type="password" id="password" placeholder="Enter password" autocomplete="off">
+    </div>
+
+    <button class="btn" id="login-btn">Authenticate</button>
+
+    <div class="status">
+      <span class="status-indicator"></span>
+      <span id="status-text">System operational • Secure connection established</span>
+    </div>
+
+    <div class="warning">
+      UNAUTHORIZED ACCESS PROHIBITED<br>
+      All authentication attempts are monitored and logged
+    </div>
+  </div>
+
+<script>
+  function updateTime() {
+    const now = new Date();
+    const formatted = now.toLocaleString('en-US', {
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    document.getElementById('timestamp').textContent = formatted;
+  }
+  updateTime();
+  setInterval(updateTime, 1000);
+
+  function setStatus(text, ok = true) {
+    const el = document.getElementById("status-text");
+    el.textContent = text;
+    el.style.color = ok ? "#ffffff" : "#b85555";
+  }
+
+  const loginBtn = document.getElementById("login-btn");
+  const userEl = document.getElementById("agent-id");
+  const passEl = document.getElementById("password");
+
+  let busy = false;
+
+  async function autoRouteIfSession() {
+    try {
+      const u = await FBIOS.me();
+      if (u && u.role) {
+        setStatus(`Session active • ${u.username} • CLEARANCE ${u.role}`, true);
+        // petit délai pour éviter un flash
+        setTimeout(() => FBIOS.routeDesktop(u.role), 250);
+      }
+    } catch {
+      // pas connecté, normal
+    }
+  }
+  autoRouteIfSession();
+
+  async function doLogin() {
+    if (busy) return;
+    const username = (userEl.value || '').trim().toUpperCase();
+    const password = passEl.value || '';
+
+    if (!username || !password) {
+      setStatus('Error: Authentication credentials required', false);
+      return;
+    }
+
+    busy = true;
+    loginBtn.disabled = true;
+
+    setStatus('Verifying credentials...', true);
+
+    // Tes "steps" visuels (on les garde)
+    const t1 = setTimeout(() => setStatus('Checking clearance level...', true), 600);
+    const t2 = setTimeout(() => setStatus('Validating access permissions...', true), 1200);
+
+    // IMPORTANT: on ne bloque pas le vrai login trop longtemps,
+    // mais on garde ton "cinéma" sans casser le résultat.
+    setTimeout(async () => {
+      try {
+        const u = await FBIOS.login(username, password); // session cookie set server-side
+        setStatus(`Access granted • ${u.username} • CLEARANCE ${u.role}`, true);
+
+        // Optionnel: effacer le champ password
+        passEl.value = '';
+
+        setTimeout(() => FBIOS.routeDesktop(u.role), 450);
+      } catch (e) {
+        setStatus(`Access denied • ${e.message || 'Invalid credentials'}`, false);
+        busy = false;
+        loginBtn.disabled = false;
+      } finally {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      }
+    }, 800);
+  }
+
+  loginBtn.addEventListener("click", doLogin);
+  document.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") doLogin();
+  });
+</script>
+</body>
+</html>
