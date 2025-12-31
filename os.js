@@ -603,6 +603,325 @@ ${(body?.value || '').trim()}`;
     });
   }
 
+  // ---------------- Scratchpad (all roles) ----------------
+  function initScratchpad(user, wm) {
+    const area = $('#note-text');
+    if (!area) return;
+
+    const status = $('#note-status');
+    const saveSessionBtn = $('#note-save-session');
+    const loadSessionBtn = $('#note-load-session');
+    const saveDriveBtn = $('#note-save-drive');
+    const clearBtn = $('#note-clear');
+    const insertBtn = $('#note-insert-ts');
+
+    const key = `note_${user.username}_${user.role}`;
+    let debounceTimer = null;
+
+    function setStatus(msg) { if (status) status.textContent = msg; }
+
+    function loadSession() {
+      const saved = sess.get(key) || '';
+      area.value = saved;
+      setStatus(saved ? 'Loaded session notes.' : 'No notes yet.');
+    }
+
+    function saveSession() {
+      sess.set(key, area.value);
+      setStatus('Saved locally for this session.');
+    }
+
+    function insertTimestamp() {
+      const prefix = area.value.trim() ? '\n' : '';
+      area.value = `${area.value}${prefix}[${new Date().toISOString()}] `;
+      saveSession();
+      area.focus();
+    }
+
+    async function saveToDrive() {
+      const safeContent = area.value || 'No notes.';
+      const name = `notes_${user.username}_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+      const mk = await api('mktext', { method: 'POST', data: { parent_id: '', name, scope: String(user.role).toUpperCase() } });
+      await api('save', { method: 'POST', data: { id: mk.id, content: safeContent } });
+      setStatus(`Saved to Drive as ${name}`);
+      wm.openWindow('win-drive');
+    }
+
+    function clearNotes() {
+      area.value = '';
+      saveSession();
+    }
+
+    area.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(saveSession, 500);
+    });
+
+    saveSessionBtn?.addEventListener('click', () => saveSession());
+    loadSessionBtn?.addEventListener('click', () => loadSession());
+    saveDriveBtn?.addEventListener('click', () => saveToDrive().catch(e => setStatus(e.message)));
+    clearBtn?.addEventListener('click', () => clearNotes());
+    insertBtn?.addEventListener('click', () => insertTimestamp());
+
+    loadSession();
+  }
+
+  // ---------------- Investigations (PI + IA) ----------------
+  function initInvestigations(user) {
+    const wrap = $('#win-investigations');
+    if (!wrap) return;
+
+    const listEl = $('#inv-list');
+    const listEmpty = $('#inv-list-empty');
+    const titleEl = $('#inv-active-title');
+    const tagDisplay = $('#inv-tag-display');
+    const tagInput = $('#inv-tags');
+    const tagSave = $('#inv-save-tags');
+    const entriesEl = $('#inv-entries');
+    const statusEl = $('#inv-status');
+    const countEl = $('#inv-count');
+    const activeMeta = $('#inv-active-meta');
+    const newTitle = $('#inv-new-title');
+    const newTags = $('#inv-new-tags');
+    const createBtn = $('#inv-create');
+    const entryText = $('#inv-entry-text');
+    const entryFile = $('#inv-entry-file');
+    const addEntryBtn = $('#inv-add-entry');
+    const exportBtn = $('#inv-export');
+    const filterInput = $('#inv-filter');
+    const filterApply = $('#inv-apply-filter');
+    const filterClear = $('#inv-clear-filter');
+
+    const key = `investigations_${user.username}_${user.role}`;
+    let investigations = [];
+    let currentId = null;
+
+    function setStatus(msg) { if (statusEl) statusEl.textContent = msg; }
+
+    function authorLabel() {
+      const role = String(user.role || '').toUpperCase();
+      if (role === 'PI' || role === 'IA') return `Investigator ${user.username}`;
+      return `Agent ${user.username}`;
+    }
+
+    function formatText(txt) {
+      return (txt || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    }
+
+    function parseTags(val) {
+      return (val || '')
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean)
+        .slice(0, 12);
+    }
+
+    function load() {
+      try {
+        const raw = sess.get(key);
+        investigations = raw ? JSON.parse(raw) : [];
+      } catch { investigations = []; }
+    }
+
+    function persist() {
+      sess.set(key, JSON.stringify(investigations));
+    }
+
+    function renderList() {
+      if (!listEl) return;
+      const q = (filterInput?.value || '').trim().toLowerCase();
+      const filtered = investigations.filter(inv => {
+        if (!q) return true;
+        const hay = `${inv.title} ${(inv.tags || []).join(' ')}`.toLowerCase();
+        return hay.includes(q);
+      });
+
+      const cards = filtered.map(inv => `
+        <div class="inv-card ${inv.id === currentId ? 'active' : ''}" data-inv="${inv.id}">
+          <div class="inv-card-title">${inv.title}</div>
+          <div class="inv-card-tags">${inv.tags?.length ? inv.tags.join(' • ') : 'No tags'}</div>
+          <div class="inv-meta">${inv.entries?.length || 0} entries • opened by ${inv.created_by || 'Unknown'}</div>
+        </div>
+      `);
+      listEl.innerHTML = cards.join('');
+      if (listEmpty) listEmpty.style.display = filtered.length ? 'none' : 'block';
+      if (countEl) countEl.textContent = `${filtered.length}/${investigations.length || 0} investigations`;
+      if (listEmpty && !filtered.length) {
+        listEmpty.textContent = investigations.length ? 'No matching investigations.' : 'No investigations yet.';
+      }
+    }
+
+    function renderTags(inv) {
+      if (!tagDisplay) return;
+      if (!inv || !inv.tags?.length) {
+        tagDisplay.innerHTML = '<div class="inv-empty">No tags yet.</div>';
+        if (tagInput) tagInput.value = '';
+        return;
+      }
+      tagDisplay.innerHTML = inv.tags.map(t => `<span class="inv-pill">${t}</span>`).join('');
+      if (tagInput) tagInput.value = inv.tags.join(', ');
+    }
+
+    function renderEntries(inv) {
+      if (!entriesEl) return;
+      if (!inv) {
+        entriesEl.innerHTML = '<div class="inv-empty">Select or create an investigation.</div>';
+        return;
+      }
+      if (!inv.entries?.length) {
+        entriesEl.innerHTML = '<div class="inv-empty">No entries yet — add a message or file.</div>';
+        return;
+      }
+
+      const rows = (inv.entries || [])
+        .slice()
+        .sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0))
+        .map(e => {
+        const when = new Date(e.ts || Date.now()).toLocaleString();
+        const head = `<div class="inv-entry-head"><span class="inv-entry-title">${e.kind === 'file' ? 'File Upload' : 'Message'}</span><span>${when} • ${e.author || 'Unknown'}</span></div>`;
+        const bodyParts = [];
+        if (e.text) bodyParts.push(`<div class="inv-entry-body">${formatText(e.text)}</div>`);
+        if (e.kind === 'file' && e.url) {
+          const size = e.size ? ` (${Math.round(e.size/1024)} KB)` : '';
+          bodyParts.push(`<div class="inv-entry-body inv-inline"><span class="chip">FILE</span> <a class="inv-file" href="${e.url}" download="${e.filename || 'file'}" target="_blank" rel="noopener">${e.filename || 'Download'}${size}</a></div>`);
+        }
+        return `<div class="inv-entry">${head}${bodyParts.join('')}</div>`;
+      });
+
+      entriesEl.innerHTML = rows.join('');
+    }
+
+    function renderActive() {
+      const inv = investigations.find(x => x.id === currentId) || null;
+      if (titleEl) titleEl.textContent = inv ? inv.title : 'No investigation selected';
+      renderTags(inv);
+      renderEntries(inv);
+      if (activeMeta) {
+        if (!inv) activeMeta.textContent = 'Waiting for selection…';
+        else {
+          const opened = inv.created_at ? new Date(inv.created_at).toLocaleString() : 'Unknown date';
+          const entryCount = inv.entries?.length || 0;
+          const tagLabel = inv.tags?.length ? `${inv.tags.length} tag(s)` : 'No tags';
+          activeMeta.textContent = `Opened by ${inv.created_by || 'Unknown'} • ${opened} • ${entryCount} entries • ${tagLabel}`;
+        }
+      }
+    }
+
+    function select(id) {
+      currentId = id;
+      renderList();
+      renderActive();
+    }
+
+    function create() {
+      const title = (newTitle?.value || '').trim();
+      if (!title) { setStatus('Title required.'); return; }
+      const tags = parseTags(newTags?.value || '');
+      const inv = { id: Date.now(), title, tags, entries: [], created_at: new Date().toISOString(), created_by: authorLabel() };
+      investigations.unshift(inv);
+      persist();
+      select(inv.id);
+      if (newTitle) newTitle.value = '';
+      if (newTags) newTags.value = '';
+      setStatus('Investigation created.');
+    }
+
+    function saveTags() {
+      const inv = investigations.find(x => x.id === currentId);
+      if (!inv) { setStatus('Select an investigation first.'); return; }
+      inv.tags = parseTags(tagInput?.value || '');
+      persist();
+      renderList();
+      renderTags(inv);
+      setStatus('Tags updated.');
+    }
+
+    function addEntry() {
+      const inv = investigations.find(x => x.id === currentId);
+      if (!inv) { setStatus('Select an investigation first.'); return; }
+      const text = (entryText?.value || '').trim();
+      const file = entryFile?.files?.[0];
+      if (!text && !file) { setStatus('Add a message or attach a file.'); return; }
+
+      if (file && file.size > 2 * 1024 * 1024) {
+        setStatus('File too large for thread (limit 2MB).');
+        return;
+      }
+
+      const ts = new Date().toISOString();
+      const author = authorLabel();
+
+      const pushEntry = (payload) => {
+        inv.entries.push({ id: Date.now(), ts, author, ...payload });
+        persist();
+        renderEntries(inv);
+        renderList();
+        if (entryText) entryText.value = '';
+        if (entryFile) entryFile.value = '';
+        setStatus('Entry added.');
+      };
+
+      if (file) {
+        setStatus('Reading file…');
+        const reader = new FileReader();
+        reader.onload = () => {
+          pushEntry({ kind: 'file', filename: file.name, size: file.size, url: reader.result, text });
+        };
+        reader.onerror = () => setStatus('Failed to read file.');
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      pushEntry({ kind: 'message', text });
+    }
+
+    listEl?.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-inv]');
+      if (!card) return;
+      select(parseInt(card.dataset.inv, 10));
+    });
+    createBtn?.addEventListener('click', () => create());
+    tagSave?.addEventListener('click', () => saveTags());
+    addEntryBtn?.addEventListener('click', () => addEntry());
+    filterApply?.addEventListener('click', () => renderList());
+    filterClear?.addEventListener('click', () => { if (filterInput) filterInput.value = ''; renderList(); });
+    exportBtn?.addEventListener('click', () => {
+      const inv = investigations.find(x => x.id === currentId);
+      if (!inv) { setStatus('Select an investigation first.'); return; }
+      const lines = [];
+      lines.push(`INVESTIGATION: ${inv.title}`);
+      lines.push(`Opened by: ${inv.created_by || 'Unknown'} on ${new Date(inv.created_at || Date.now()).toLocaleString()}`);
+      lines.push(`Tags: ${inv.tags?.join(', ') || 'none'}`);
+      lines.push('--- TIMELINE ---');
+      const sorted = (inv.entries || []).slice().sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0));
+      sorted.forEach((e, idx) => {
+        const when = new Date(e.ts || Date.now()).toLocaleString();
+        const head = `[${idx + 1}] ${when} • ${e.author || 'Unknown'} • ${e.kind === 'file' ? 'FILE' : 'MESSAGE'}`;
+        lines.push(head);
+        if (e.filename) lines.push(`File: ${e.filename} (${e.size ? Math.round(e.size/1024) + ' KB' : 'unknown'})`);
+        if (e.text) lines.push(e.text);
+        lines.push('');
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${inv.title.replace(/[^a-z0-9_-]+/gi, '_') || 'investigation'}_thread.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setStatus('Exported thread.');
+    });
+
+    load();
+    renderList();
+    renderActive();
+    setStatus('Waiting…');
+  }
+
   // ---------------- Boot Desktop ----------------
   // Supports: bootDesktop("PI") OR bootDesktop("PI", userFromDesktop)
   async function bootDesktop(requiredRole, userOverride = null) {
@@ -648,6 +967,8 @@ ${(body?.value || '').trim()}`;
     initLogs(user);
     initAdmin(user);
     initMootModules(user, wm);
+    initInvestigations(user);
+    initScratchpad(user, wm);
 
     // lock/logout (server session only)
     const doExit = async (mode) => {

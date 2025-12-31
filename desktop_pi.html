@@ -60,6 +60,18 @@
         <div class="label">Server Logs</div>
         <div class="hint">Your actions only</div>
       </div>
+
+      <div class="icon" data-open="win-investigations" tabindex="0">
+        <div class="glyph">@</div>
+        <div class="label">Investigations</div>
+        <div class="hint">Threads, files, tags</div>
+      </div>
+
+      <div class="icon" data-open="win-note" tabindex="0">
+        <div class="glyph">*</div>
+        <div class="label">Scratchpad</div>
+        <div class="hint">Session notes & save to Drive</div>
+      </div>
     </div>
 
     <div class="watermark">PI • UNAUTHORIZED ACCESS PROHIBITED</div>
@@ -148,6 +160,99 @@
       </div>
       <div class="resizer" data-resize></div>
     </div>
+
+    <!-- INVESTIGATIONS -->
+    <div class="window hidden" id="win-investigations" style="top:150px; left: 320px; width: 940px; height: 560px;">
+      <div class="titlebar" data-drag>
+        <div class="win-title"><span class="miniicon">@</span> INVESTIGATIONS</div>
+        <div class="win-controls">
+          <div class="ctl" data-min="win-investigations">_</div>
+          <div class="ctl" data-close="win-investigations">×</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section">
+          <h4>NEW INVESTIGATION</h4>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <input class="field" style="flex:1;" id="inv-new-title" placeholder="Title (ex: Case #77-Delta)">
+            <input class="field" style="flex:1;" id="inv-new-tags" placeholder="Tags (comma separated)">
+            <button class="btn" id="inv-create">Create & Open</button>
+          </div>
+        </div>
+        <div class="section">
+          <h4>THREADS & FILES</h4>
+          <div class="inv-layout">
+            <div>
+              <div class="inv-toolbar">
+                <div class="inv-inline" style="flex:1;">
+                  <input class="field" style="flex:1;" id="inv-filter" placeholder="Filter by title or tag">
+                  <button class="mini" id="inv-apply-filter">Apply</button>
+                  <button class="mini" id="inv-clear-filter">Clear</button>
+                </div>
+                <div class="inv-meta-line" id="inv-count">0 investigations</div>
+              </div>
+              <div class="inv-list" id="inv-list"></div>
+              <div class="inv-empty" id="inv-list-empty">No investigations yet.</div>
+            </div>
+              <div>
+                <div class="inv-inline" style="justify-content: space-between; align-items:flex-start;">
+                  <div>
+                    <div class="inv-entry-title" id="inv-active-title">No investigation selected</div>
+                    <div class="inv-taglist" id="inv-tag-display" style="margin-top:6px;"></div>
+                    <div class="inv-meta-line" id="inv-active-meta" style="margin-top:4px;">Waiting for selection…</div>
+                  </div>
+                  <div class="inv-inline" style="gap:6px;">
+                    <input class="field" style="width:220px;" id="inv-tags" placeholder="Update tags…">
+                    <button class="mini" id="inv-save-tags">Save Tags</button>
+                    <button class="mini" id="inv-export">Export Thread</button>
+                  </div>
+                </div>
+
+              <div class="inv-entries" id="inv-entries">
+                <div class="inv-empty">Select or create an investigation.</div>
+              </div>
+
+              <div class="section" style="margin-top:12px;">
+                <h4>ADD MESSAGE / FILE</h4>
+                <textarea class="field" id="inv-entry-text" style="height:120px; resize:none;" placeholder="Write an update, then optionally attach a file. Entries will show who added them."></textarea>
+                <div class="inv-inline" style="margin-top:10px;">
+                  <input type="file" id="inv-entry-file" style="flex:1;">
+                  <button class="btn" id="inv-add-entry">Add to Thread</button>
+                  <div class="empty" id="inv-status">Waiting…</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="resizer" data-resize></div>
+    </div>
+
+    <!-- SCRATCHPAD -->
+    <div class="window hidden" id="win-note" style="top:220px; left: 260px; width: 640px; height: 440px;">
+      <div class="titlebar" data-drag>
+        <div class="win-title"><span class="miniicon">*</span> SCRATCHPAD</div>
+        <div class="win-controls">
+          <div class="ctl" data-min="win-note">_</div>
+          <div class="ctl" data-close="win-note">×</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section">
+          <h4>SESSION NOTES</h4>
+          <textarea class="field" id="note-text" style="height:220px; resize:none;" placeholder="Notes stay local in this session and can be exported to Drive…"></textarea>
+          <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+            <button class="btn" id="note-save-session">Save Session</button>
+            <button class="btn" id="note-load-session">Reload</button>
+            <button class="btn" id="note-insert-ts">Insert Timestamp</button>
+            <button class="btn" id="note-save-drive">Save to Drive</button>
+            <button class="btn danger" id="note-clear">Clear</button>
+          </div>
+          <div class="empty" id="note-status" style="margin-top:10px;">No notes yet.</div>
+        </div>
+      </div>
+      <div class="resizer" data-resize></div>
+    </div>
   </div>
 
   <!-- Start menu -->
@@ -159,6 +264,8 @@
     <div class="items">
       <div class="menuitem" data-open="win-drive"><div class="name">Open Drive</div><div class="desc">Files, folders, uploads</div></div>
       <div class="menuitem" data-open="win-logs"><div class="name">Open Logs</div><div class="desc">Your server logs</div></div>
+      <div class="menuitem" data-open="win-investigations"><div class="name">Open Investigations</div><div class="desc">Conversation, files, tags</div></div>
+      <div class="menuitem" data-open="win-note"><div class="name">Open Scratchpad</div><div class="desc">Local notes + Drive export</div></div>
       <div class="menuitem" id="menu-lock"><div class="name">Lock Session</div><div class="desc">Return to login screen</div></div>
       <div class="menuitem" id="menu-logout"><div class="name">Logout</div><div class="desc">Terminate session</div></div>
     </div>
