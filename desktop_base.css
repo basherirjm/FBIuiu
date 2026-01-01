@@ -624,6 +624,77 @@ select.field.small{ width:auto; padding:10px; }
 .admin-sub{ color: var(--muted); font-size: 10px; margin-top:4px; font-family: var(--mono); }
 .admin-actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
 
+/* Investigations */
+.inv-toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+  flex-wrap:wrap;
+}
+.inv-meta-line{
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size:11px;
+}
+.inv-layout{
+  display:grid;
+  grid-template-columns: 280px 1fr;
+  gap: 14px;
+}
+.inv-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  max-height: 360px;
+  overflow:auto;
+}
+.inv-card{
+  border:1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.18);
+  padding:10px;
+  cursor:pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.inv-card.active{ border-color: var(--accent); background: rgba(139,0,0,0.12); }
+.inv-card-title{ color:#fff; font-weight:700; letter-spacing:.8px; }
+.inv-card-tags{ color: var(--muted); font-size:10px; margin-top:4px; letter-spacing:1px; text-transform:uppercase; }
+.inv-meta{ color: var(--muted); font-family: var(--mono); font-size:11px; margin-top:6px; }
+.inv-entries{
+  border:1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.18);
+  padding: 12px;
+  min-height: 220px;
+  max-height: 360px;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.inv-entry{
+  border:1px solid rgba(255,255,255,0.08);
+  padding:10px;
+  background: rgba(255,255,255,0.02);
+}
+.inv-entry-head{
+  display:flex;
+  justify-content: space-between;
+  align-items:baseline;
+  gap:8px;
+  font-family: var(--mono);
+  font-size:11px;
+  color: var(--muted2);
+}
+.inv-entry-title{ font-weight:800; letter-spacing:.8px; color:#fff; }
+.inv-entry-body{ margin-top:6px; line-height:1.5; white-space:pre-wrap; color: #e8e8e8; }
+.inv-taglist{ display:flex; flex-wrap:wrap; gap:6px; }
+.inv-pill{ border:1px solid rgba(255,255,255,0.18); padding:4px 8px; font-size:10px; letter-spacing:1px; background: rgba(255,255,255,0.05); }
+.inv-inline{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.inv-file{ color: #8ec7ff; text-decoration:none; }
+.inv-empty{ color: var(--muted); font-family: var(--mono); }
+
+
 /* Scrollbars */
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.25) rgba(0, 0, 0, 0.35); }
 *::-webkit-scrollbar { width: 10px; height: 10px; }

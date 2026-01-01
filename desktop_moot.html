@@ -61,6 +61,12 @@
         <div class="label">Server Logs</div>
         <div class="hint">Your actions only</div>
       </div>
+
+      <div class="icon" data-open="win-note" tabindex="0">
+        <div class="glyph">*</div>
+        <div class="label">Scratchpad</div>
+        <div class="hint">Session notes & save to Drive</div>
+      </div>
     </div>
 
     <div class="watermark">MOOT • UNAUTHORIZED ACCESS PROHIBITED</div>
@@ -180,6 +186,32 @@
       </div>
       <div class="resizer" data-resize></div>
     </div>
+
+    <!-- SCRATCHPAD -->
+    <div class="window hidden" id="win-note" style="top:220px; left: 260px; width: 640px; height: 440px;">
+      <div class="titlebar" data-drag>
+        <div class="win-title"><span class="miniicon">*</span> SCRATCHPAD</div>
+        <div class="win-controls">
+          <div class="ctl" data-min="win-note">_</div>
+          <div class="ctl" data-close="win-note">×</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section">
+          <h4>SESSION NOTES</h4>
+          <textarea class="field" id="note-text" style="height:220px; resize:none;" placeholder="Notes stay local in this session and can be exported to Drive…"></textarea>
+          <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+            <button class="btn" id="note-save-session">Save Session</button>
+            <button class="btn" id="note-load-session">Reload</button>
+            <button class="btn" id="note-insert-ts">Insert Timestamp</button>
+            <button class="btn" id="note-save-drive">Save to Drive</button>
+            <button class="btn danger" id="note-clear">Clear</button>
+          </div>
+          <div class="empty" id="note-status" style="margin-top:10px;">No notes yet.</div>
+        </div>
+      </div>
+      <div class="resizer" data-resize></div>
+    </div>
   </div>
 
   <!-- Start menu -->
@@ -192,6 +224,7 @@
       <div class="menuitem" data-open="win-drive"><div class="name">Open Drive</div><div class="desc">Files, folders, uploads</div></div>
       <div class="menuitem" data-open="win-comms"><div class="name">Open Secure Comms</div><div class="desc">Generate & save dispatch</div></div>
       <div class="menuitem" data-open="win-logs"><div class="name">Open Logs</div><div class="desc">Your server logs</div></div>
+      <div class="menuitem" data-open="win-note"><div class="name">Open Scratchpad</div><div class="desc">Local notes + Drive export</div></div>
       <div class="menuitem" id="menu-lock"><div class="name">Lock Session</div><div class="desc">Return to login screen</div></div>
       <div class="menuitem" id="menu-logout"><div class="name">Logout</div><div class="desc">Terminate session</div></div>
     </div>
