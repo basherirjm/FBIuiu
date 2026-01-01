@@ -753,6 +753,15 @@ ${(body?.value || '').trim()}`;
       if (listEmpty && !filtered.length) {
         listEmpty.textContent = investigations.length ? 'No matching investigations.' : 'No investigations yet.';
       }
+      const cards = investigations.map(inv => `
+        <div class="inv-card ${inv.id === currentId ? 'active' : ''}" data-inv="${inv.id}">
+          <div class="inv-card-title">${inv.title}</div>
+          <div class="inv-card-tags">${inv.tags?.length ? inv.tags.join(' • ') : 'No tags'}</div>
+          <div class="inv-meta">${inv.entries?.length || 0} entries</div>
+        </div>
+      `);
+      listEl.innerHTML = cards.join('');
+      if (listEmpty) listEmpty.style.display = investigations.length ? 'none' : 'block';
     }
 
     function renderTags(inv) {
@@ -785,6 +794,11 @@ ${(body?.value || '').trim()}`;
         const head = `<div class="inv-entry-head"><span class="inv-entry-title">${e.kind === 'file' ? 'File Upload' : 'Message'}</span><span>${when} • ${e.author || 'Unknown'}</span></div>`;
         const bodyParts = [];
         if (e.text) bodyParts.push(`<div class="inv-entry-body">${formatText(e.text)}</div>`);
+      const rows = inv.entries.map(e => {
+        const when = new Date(e.ts || Date.now()).toLocaleString();
+        const head = `<div class="inv-entry-head"><span class="inv-entry-title">${e.kind === 'file' ? 'File Upload' : 'Message'}</span><span>${when} • ${e.author || 'Unknown'}</span></div>`;
+        const bodyParts = [];
+        if (e.text) bodyParts.push(`<div class="inv-entry-body">${e.text.replace(/</g, '&lt;')}</div>`);
         if (e.kind === 'file' && e.url) {
           const size = e.size ? ` (${Math.round(e.size/1024)} KB)` : '';
           bodyParts.push(`<div class="inv-entry-body inv-inline"><span class="chip">FILE</span> <a class="inv-file" href="${e.url}" download="${e.filename || 'file'}" target="_blank" rel="noopener">${e.filename || 'Download'}${size}</a></div>`);
@@ -822,6 +836,7 @@ ${(body?.value || '').trim()}`;
       if (!title) { setStatus('Title required.'); return; }
       const tags = parseTags(newTags?.value || '');
       const inv = { id: Date.now(), title, tags, entries: [], created_at: new Date().toISOString(), created_by: authorLabel() };
+      const inv = { id: Date.now(), title, tags, entries: [], created_at: new Date().toISOString() };
       investigations.unshift(inv);
       persist();
       select(inv.id);
