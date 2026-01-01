@@ -666,7 +666,7 @@ ${(body?.value || '').trim()}`;
     loadSession();
   }
 
-      // ---------------- Investigations (PI + IA) ----------------
+  // ---------------- Investigations (PI + IA) ----------------
   function initInvestigations(user) {
     const wrap = $('#win-investigations');
     if (!wrap) return;
@@ -692,10 +692,17 @@ ${(body?.value || '').trim()}`;
     const filterApply = $('#inv-apply-filter');
     const filterClear = $('#inv-clear-filter');
 
+    const key = `investigations_${user.username}_${user.role}`;
     let investigations = [];
     let currentId = null;
 
     function setStatus(msg) { if (statusEl) statusEl.textContent = msg; }
+
+    function authorLabel() {
+      const role = String(user.role || '').toUpperCase();
+      if (role === 'PI' || role === 'IA') return `Investigator ${user.username}`;
+      return `Agent ${user.username}`;
+    }
 
     function formatText(txt) {
       return (txt || '')
@@ -711,6 +718,17 @@ ${(body?.value || '').trim()}`;
         .map(t => t.trim())
         .filter(Boolean)
         .slice(0, 12);
+    }
+
+    function load() {
+      try {
+        const raw = sess.get(key);
+        investigations = raw ? JSON.parse(raw) : [];
+      } catch { investigations = []; }
+    }
+
+    function persist() {
+      sess.set(key, JSON.stringify(investigations));
     }
 
     function renderList() {
@@ -735,6 +753,15 @@ ${(body?.value || '').trim()}`;
       if (listEmpty && !filtered.length) {
         listEmpty.textContent = investigations.length ? 'No matching investigations.' : 'No investigations yet.';
       }
+      const cards = investigations.map(inv => `
+        <div class="inv-card ${inv.id === currentId ? 'active' : ''}" data-inv="${inv.id}">
+          <div class="inv-card-title">${inv.title}</div>
+          <div class="inv-card-tags">${inv.tags?.length ? inv.tags.join(' • ') : 'No tags'}</div>
+          <div class="inv-meta">${inv.entries?.length || 0} entries</div>
+        </div>
+      `);
+      listEl.innerHTML = cards.join('');
+      if (listEmpty) listEmpty.style.display = investigations.length ? 'none' : 'block';
     }
 
     function renderTags(inv) {
@@ -744,7 +771,7 @@ ${(body?.value || '').trim()}`;
         if (tagInput) tagInput.value = '';
         return;
       }
-      tagDisplay.innerHTML = inv.tags.map(t => `<span class="inv-tag">${t}</span>`).join('');
+      tagDisplay.innerHTML = inv.tags.map(t => `<span class="inv-pill">${t}</span>`).join('');
       if (tagInput) tagInput.value = inv.tags.join(', ');
     }
 
@@ -754,16 +781,32 @@ ${(body?.value || '').trim()}`;
         entriesEl.innerHTML = '<div class="inv-empty">Select or create an investigation.</div>';
         return;
       }
-      const sorted = (inv.entries || []).slice().sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0));
-      const rows = sorted.map((e, idx) => {
-        const when = new Date(e.ts || Date.now());
-        const meta = `${idx + 1}. ${when.toLocaleString()} • ${e.author || 'Unknown'}${e.kind === 'file' ? ' • File' : ''}`;
-        const body = e.kind === 'file'
-          ? `<div class="inv-entry-file">${formatText(e.text || '')}<div class="inv-file"><div>${e.filename || 'Attachment'} (${e.size ? Math.round((e.size||0)/1024) + ' KB' : 'unknown'})</div><a download="${e.filename || 'file'}" href="${e.data_url || '#'}">Download</a></div></div>`
-          : `<div class="inv-entry-text">${formatText(e.text)}</div>`;
-        return `<div class="inv-entry"><div class="inv-meta">${meta}</div>${body}</div>`;
+      if (!inv.entries?.length) {
+        entriesEl.innerHTML = '<div class="inv-empty">No entries yet — add a message or file.</div>';
+        return;
+      }
+
+      const rows = (inv.entries || [])
+        .slice()
+        .sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0))
+        .map(e => {
+        const when = new Date(e.ts || Date.now()).toLocaleString();
+        const head = `<div class="inv-entry-head"><span class="inv-entry-title">${e.kind === 'file' ? 'File Upload' : 'Message'}</span><span>${when} • ${e.author || 'Unknown'}</span></div>`;
+        const bodyParts = [];
+        if (e.text) bodyParts.push(`<div class="inv-entry-body">${formatText(e.text)}</div>`);
+      const rows = inv.entries.map(e => {
+        const when = new Date(e.ts || Date.now()).toLocaleString();
+        const head = `<div class="inv-entry-head"><span class="inv-entry-title">${e.kind === 'file' ? 'File Upload' : 'Message'}</span><span>${when} • ${e.author || 'Unknown'}</span></div>`;
+        const bodyParts = [];
+        if (e.text) bodyParts.push(`<div class="inv-entry-body">${e.text.replace(/</g, '&lt;')}</div>`);
+        if (e.kind === 'file' && e.url) {
+          const size = e.size ? ` (${Math.round(e.size/1024)} KB)` : '';
+          bodyParts.push(`<div class="inv-entry-body inv-inline"><span class="chip">FILE</span> <a class="inv-file" href="${e.url}" download="${e.filename || 'file'}" target="_blank" rel="noopener">${e.filename || 'Download'}${size}</a></div>`);
+        }
+        return `<div class="inv-entry">${head}${bodyParts.join('')}</div>`;
       });
-      entriesEl.innerHTML = rows.join('') || '<div class="inv-empty">No entries yet.</div>';
+
+      entriesEl.innerHTML = rows.join('');
     }
 
     function renderActive() {
@@ -771,9 +814,15 @@ ${(body?.value || '').trim()}`;
       if (titleEl) titleEl.textContent = inv ? inv.title : 'No investigation selected';
       renderTags(inv);
       renderEntries(inv);
-      if (activeMeta) activeMeta.textContent = inv
-        ? `${inv.tags?.length || 0} tags • ${inv.entries?.length || 0} entries`
-        : 'Waiting for selection…';
+      if (activeMeta) {
+        if (!inv) activeMeta.textContent = 'Waiting for selection…';
+        else {
+          const opened = inv.created_at ? new Date(inv.created_at).toLocaleString() : 'Unknown date';
+          const entryCount = inv.entries?.length || 0;
+          const tagLabel = inv.tags?.length ? `${inv.tags.length} tag(s)` : 'No tags';
+          activeMeta.textContent = `Opened by ${inv.created_by || 'Unknown'} • ${opened} • ${entryCount} entries • ${tagLabel}`;
+        }
+      }
     }
 
     function select(id) {
@@ -782,86 +831,73 @@ ${(body?.value || '').trim()}`;
       renderActive();
     }
 
-    async function refresh() {
-      setStatus('Loading…');
-      try {
-        const r = await api('inv_list');
-        investigations = r.investigations || [];
-        if (investigations.length && !currentId) currentId = investigations[0].id;
-        renderList();
-        renderActive();
-        setStatus('Ready.');
-      } catch (e) {
-        setStatus(e.message || 'Failed to load investigations');
-      }
-    }
-
-    async function create() {
+    function create() {
       const title = (newTitle?.value || '').trim();
       if (!title) { setStatus('Title required.'); return; }
-      const tags = parseTags(newTags?.value || '').join(',');
-      setStatus('Creating…');
-      try {
-        const r = await api('inv_create', { method: 'POST', data: { title, tags } });
-        investigations.unshift(r.investigation);
-        select(r.investigation.id);
-        if (newTitle) newTitle.value = '';
-        if (newTags) newTags.value = '';
-        renderList();
-        setStatus('Investigation created.');
-      } catch (e) {
-        setStatus(e.message || 'Failed to create');
-      }
+      const tags = parseTags(newTags?.value || '');
+      const inv = { id: Date.now(), title, tags, entries: [], created_at: new Date().toISOString(), created_by: authorLabel() };
+      const inv = { id: Date.now(), title, tags, entries: [], created_at: new Date().toISOString() };
+      investigations.unshift(inv);
+      persist();
+      select(inv.id);
+      if (newTitle) newTitle.value = '';
+      if (newTags) newTags.value = '';
+      setStatus('Investigation created.');
     }
 
-    async function saveTags() {
+    function saveTags() {
       const inv = investigations.find(x => x.id === currentId);
       if (!inv) { setStatus('Select an investigation first.'); return; }
-      const tags = parseTags(tagInput?.value || '').join(',');
-      setStatus('Saving tags…');
-      try {
-        const r = await api('inv_update_tags', { method: 'POST', data: { id: inv.id, tags } });
-        const idx = investigations.findIndex(x => x.id === inv.id);
-        if (idx >= 0) investigations[idx] = r.investigation;
-        renderList();
-        renderActive();
-        setStatus('Tags updated.');
-      } catch (e) {
-        setStatus(e.message || 'Failed to save tags');
-      }
+      inv.tags = parseTags(tagInput?.value || '');
+      persist();
+      renderList();
+      renderTags(inv);
+      setStatus('Tags updated.');
     }
 
-    async function addEntry() {
+    function addEntry() {
       const inv = investigations.find(x => x.id === currentId);
       if (!inv) { setStatus('Select an investigation first.'); return; }
       const text = (entryText?.value || '').trim();
       const file = entryFile?.files?.[0];
       if (!text && !file) { setStatus('Add a message or attach a file.'); return; }
-      if (file && file.size > 2 * 1024 * 1024) { setStatus('File too large for thread (limit 2MB).'); return; }
 
-      setStatus('Posting entry…');
-      try {
-        const form = new FormData();
-        form.append('text', text);
-        form.append('id', inv.id);
-        if (file) form.append('file', file);
-        const r = await api('inv_add_entry', { method: 'POST', form });
-        const idx = investigations.findIndex(x => x.id === inv.id);
-        if (idx >= 0) investigations[idx] = r.investigation;
-        renderEntries(r.investigation);
+      if (file && file.size > 2 * 1024 * 1024) {
+        setStatus('File too large for thread (limit 2MB).');
+        return;
+      }
+
+      const ts = new Date().toISOString();
+      const author = authorLabel();
+
+      const pushEntry = (payload) => {
+        inv.entries.push({ id: Date.now(), ts, author, ...payload });
+        persist();
+        renderEntries(inv);
         renderList();
         if (entryText) entryText.value = '';
         if (entryFile) entryFile.value = '';
         setStatus('Entry added.');
-      } catch (e) {
-        setStatus(e.message || 'Failed to add entry');
+      };
+
+      if (file) {
+        setStatus('Reading file…');
+        const reader = new FileReader();
+        reader.onload = () => {
+          pushEntry({ kind: 'file', filename: file.name, size: file.size, url: reader.result, text });
+        };
+        reader.onerror = () => setStatus('Failed to read file.');
+        reader.readAsDataURL(file);
+        return;
       }
+
+      pushEntry({ kind: 'message', text });
     }
 
     listEl?.addEventListener('click', (e) => {
       const card = e.target.closest('[data-inv]');
       if (!card) return;
-      select(card.dataset.inv);
+      select(parseInt(card.dataset.inv, 10));
     });
     createBtn?.addEventListener('click', () => create());
     tagSave?.addEventListener('click', () => saveTags());
@@ -895,10 +931,13 @@ ${(body?.value || '').trim()}`;
       setStatus('Exported thread.');
     });
 
-    refresh();
+    load();
+    renderList();
+    renderActive();
+    setStatus('Waiting…');
   }
 
-// ---------------- Boot Desktop ----------------
+  // ---------------- Boot Desktop ----------------
   // Supports: bootDesktop("PI") OR bootDesktop("PI", userFromDesktop)
   async function bootDesktop(requiredRole, userOverride = null) {
     let user = userOverride;
