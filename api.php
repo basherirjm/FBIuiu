@@ -108,6 +108,41 @@ function get_parent_scope(?int $parentId): ?string {
 $action = (string)param('action', '');
 if (!$action) json_out(['ok'=>false,'error'=>'Missing action'], 400);
 
+// ---- Investigations helpers (PI/IA only, persisted in uploads/) ----
+const INV_STORE = __DIR__ . '/uploads/investigations.json';
+
+function ensure_uploads_dir(): void {
+  $dir = __DIR__ . '/uploads';
+  if (!is_dir($dir)) mkdir($dir, 0775, true);
+}
+
+function load_investigations(): array {
+  ensure_uploads_dir();
+  if (!is_file(INV_STORE)) return [];
+  $raw = file_get_contents(INV_STORE);
+  if ($raw === false || $raw === '') return [];
+  $decoded = json_decode($raw, true);
+  return is_array($decoded) ? $decoded : [];
+}
+
+function save_investigations(array $list): void {
+  ensure_uploads_dir();
+  file_put_contents(INV_STORE, json_encode($list, JSON_PRETTY_PRINT));
+}
+
+function require_investigator(array $u): void {
+  $role = strtoupper((string)$u['role']);
+  if (!in_array($role, ['PI', 'IA'], true)) {
+    json_out(['ok'=>false,'error'=>'Investigations restricted'], 403);
+  }
+}
+
+function investigator_label(array $u): string {
+  $role = strtoupper((string)$u['role']);
+  if ($role === 'PI' || $role === 'IA') return 'Investigator ' . $u['username'];
+  return 'Agent ' . $u['username'];
+}
+
 // DOWNLOAD is special (binary)
 if ($action === 'download') {
   $u = require_login();
@@ -185,6 +220,101 @@ switch ($action) {
       'username'=>(string)$_SESSION['username'],
       'role'=>(string)$_SESSION['role'],
     ]]);
+  }
+
+  // ---- investigations (PI / IA only) ----
+  case 'inv_list': {
+    $u = require_login();
+    require_investigator($u);
+    $all = load_investigations();
+    json_out(['ok'=>true,'investigations'=>$all]);
+  }
+
+  case 'inv_create': {
+    $u = require_login();
+    require_investigator($u);
+    $title = clean_name((string)param('title',''));
+    $tagsRaw = (string)param('tags','');
+    if (!$title) json_out(['ok'=>false,'error'=>'Title required'], 400);
+    $tags = array_values(array_filter(array_map('trim', explode(',', $tagsRaw)), fn($t)=>$t !== ''));
+    $tags = array_slice($tags, 0, 12);
+
+    $all = load_investigations();
+    $inv = [
+      'id' => uniqid('inv_', true),
+      'title' => $title,
+      'tags' => $tags,
+      'created_at' => date(DATE_ATOM),
+      'created_by' => investigator_label($u),
+      'entries' => [],
+    ];
+    array_unshift($all, $inv);
+    save_investigations($all);
+    log_action($u['id'], 'inv_create', $title);
+    json_out(['ok'=>true,'investigation'=>$inv]);
+  }
+
+  case 'inv_update_tags': {
+    $u = require_login();
+    require_investigator($u);
+    $id = (string)param('id','');
+    $tagsRaw = (string)param('tags','');
+    $tags = array_values(array_filter(array_map('trim', explode(',', $tagsRaw)), fn($t)=>$t !== ''));
+    $tags = array_slice($tags, 0, 12);
+
+    $all = load_investigations();
+    foreach ($all as &$inv) {
+      if ($inv['id'] === $id) {
+        $inv['tags'] = $tags;
+        save_investigations($all);
+        log_action($u['id'], 'inv_tags', "{$id};" . implode(',', $tags));
+        json_out(['ok'=>true,'investigation'=>$inv]);
+      }
+    }
+    unset($inv);
+    json_out(['ok'=>false,'error'=>'Investigation not found'], 404);
+  }
+
+  case 'inv_add_entry': {
+    $u = require_login();
+    require_investigator($u);
+    $id = (string)param('id','');
+    $text = trim((string)param('text',''));
+    $all = load_investigations();
+    $file = $_FILES['file'] ?? null;
+
+    foreach ($all as &$inv) {
+      if ($inv['id'] !== $id) continue;
+      if (!$text && !$file) json_out(['ok'=>false,'error'=>'Message or file required'], 400);
+
+      $entry = [
+        'id' => uniqid('entry_', true),
+        'ts' => date(DATE_ATOM),
+        'author' => investigator_label($u),
+      ];
+
+      if ($file && is_array($file) && $file['tmp_name']) {
+        if ($file['size'] > 2 * 1024 * 1024) json_out(['ok'=>false,'error'=>'File too large (2MB max)'], 400);
+        $mime = mime_content_type($file['tmp_name']) ?: 'application/octet-stream';
+        $data = base64_encode((string)file_get_contents($file['tmp_name']));
+        $entry['kind'] = 'file';
+        $entry['filename'] = clean_name((string)$file['name']);
+        $entry['size'] = (int)$file['size'];
+        $entry['mime'] = $mime;
+        $entry['data_url'] = 'data:' . $mime . ';base64,' . $data;
+        if ($text) $entry['text'] = $text;
+      } else {
+        $entry['kind'] = 'message';
+        $entry['text'] = $text;
+      }
+
+      $inv['entries'][] = $entry;
+      save_investigations($all);
+      log_action($u['id'], 'inv_entry', $id);
+      json_out(['ok'=>true,'investigation'=>$inv]);
+    }
+    unset($inv);
+    json_out(['ok'=>false,'error'=>'Investigation not found'], 404);
   }
 
   // ---- logs ----
