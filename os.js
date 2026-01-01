@@ -679,12 +679,18 @@ ${(body?.value || '').trim()}`;
     const tagSave = $('#inv-save-tags');
     const entriesEl = $('#inv-entries');
     const statusEl = $('#inv-status');
+    const countEl = $('#inv-count');
+    const activeMeta = $('#inv-active-meta');
     const newTitle = $('#inv-new-title');
     const newTags = $('#inv-new-tags');
     const createBtn = $('#inv-create');
     const entryText = $('#inv-entry-text');
     const entryFile = $('#inv-entry-file');
     const addEntryBtn = $('#inv-add-entry');
+    const exportBtn = $('#inv-export');
+    const filterInput = $('#inv-filter');
+    const filterApply = $('#inv-apply-filter');
+    const filterClear = $('#inv-clear-filter');
 
     const key = `investigations_${user.username}_${user.role}`;
     let investigations = [];
@@ -696,6 +702,14 @@ ${(body?.value || '').trim()}`;
       const role = String(user.role || '').toUpperCase();
       if (role === 'PI' || role === 'IA') return `Investigator ${user.username}`;
       return `Agent ${user.username}`;
+    }
+
+    function formatText(txt) {
+      return (txt || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
     }
 
     function parseTags(val) {
@@ -719,6 +733,26 @@ ${(body?.value || '').trim()}`;
 
     function renderList() {
       if (!listEl) return;
+      const q = (filterInput?.value || '').trim().toLowerCase();
+      const filtered = investigations.filter(inv => {
+        if (!q) return true;
+        const hay = `${inv.title} ${(inv.tags || []).join(' ')}`.toLowerCase();
+        return hay.includes(q);
+      });
+
+      const cards = filtered.map(inv => `
+        <div class="inv-card ${inv.id === currentId ? 'active' : ''}" data-inv="${inv.id}">
+          <div class="inv-card-title">${inv.title}</div>
+          <div class="inv-card-tags">${inv.tags?.length ? inv.tags.join(' • ') : 'No tags'}</div>
+          <div class="inv-meta">${inv.entries?.length || 0} entries • opened by ${inv.created_by || 'Unknown'}</div>
+        </div>
+      `);
+      listEl.innerHTML = cards.join('');
+      if (listEmpty) listEmpty.style.display = filtered.length ? 'none' : 'block';
+      if (countEl) countEl.textContent = `${filtered.length}/${investigations.length || 0} investigations`;
+      if (listEmpty && !filtered.length) {
+        listEmpty.textContent = investigations.length ? 'No matching investigations.' : 'No investigations yet.';
+      }
       const cards = investigations.map(inv => `
         <div class="inv-card ${inv.id === currentId ? 'active' : ''}" data-inv="${inv.id}">
           <div class="inv-card-title">${inv.title}</div>
@@ -752,6 +786,14 @@ ${(body?.value || '').trim()}`;
         return;
       }
 
+      const rows = (inv.entries || [])
+        .slice()
+        .sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0))
+        .map(e => {
+        const when = new Date(e.ts || Date.now()).toLocaleString();
+        const head = `<div class="inv-entry-head"><span class="inv-entry-title">${e.kind === 'file' ? 'File Upload' : 'Message'}</span><span>${when} • ${e.author || 'Unknown'}</span></div>`;
+        const bodyParts = [];
+        if (e.text) bodyParts.push(`<div class="inv-entry-body">${formatText(e.text)}</div>`);
       const rows = inv.entries.map(e => {
         const when = new Date(e.ts || Date.now()).toLocaleString();
         const head = `<div class="inv-entry-head"><span class="inv-entry-title">${e.kind === 'file' ? 'File Upload' : 'Message'}</span><span>${when} • ${e.author || 'Unknown'}</span></div>`;
@@ -772,6 +814,15 @@ ${(body?.value || '').trim()}`;
       if (titleEl) titleEl.textContent = inv ? inv.title : 'No investigation selected';
       renderTags(inv);
       renderEntries(inv);
+      if (activeMeta) {
+        if (!inv) activeMeta.textContent = 'Waiting for selection…';
+        else {
+          const opened = inv.created_at ? new Date(inv.created_at).toLocaleString() : 'Unknown date';
+          const entryCount = inv.entries?.length || 0;
+          const tagLabel = inv.tags?.length ? `${inv.tags.length} tag(s)` : 'No tags';
+          activeMeta.textContent = `Opened by ${inv.created_by || 'Unknown'} • ${opened} • ${entryCount} entries • ${tagLabel}`;
+        }
+      }
     }
 
     function select(id) {
@@ -784,6 +835,7 @@ ${(body?.value || '').trim()}`;
       const title = (newTitle?.value || '').trim();
       if (!title) { setStatus('Title required.'); return; }
       const tags = parseTags(newTags?.value || '');
+      const inv = { id: Date.now(), title, tags, entries: [], created_at: new Date().toISOString(), created_by: authorLabel() };
       const inv = { id: Date.now(), title, tags, entries: [], created_at: new Date().toISOString() };
       investigations.unshift(inv);
       persist();
@@ -809,6 +861,11 @@ ${(body?.value || '').trim()}`;
       const text = (entryText?.value || '').trim();
       const file = entryFile?.files?.[0];
       if (!text && !file) { setStatus('Add a message or attach a file.'); return; }
+
+      if (file && file.size > 2 * 1024 * 1024) {
+        setStatus('File too large for thread (limit 2MB).');
+        return;
+      }
 
       const ts = new Date().toISOString();
       const author = authorLabel();
@@ -845,6 +902,34 @@ ${(body?.value || '').trim()}`;
     createBtn?.addEventListener('click', () => create());
     tagSave?.addEventListener('click', () => saveTags());
     addEntryBtn?.addEventListener('click', () => addEntry());
+    filterApply?.addEventListener('click', () => renderList());
+    filterClear?.addEventListener('click', () => { if (filterInput) filterInput.value = ''; renderList(); });
+    exportBtn?.addEventListener('click', () => {
+      const inv = investigations.find(x => x.id === currentId);
+      if (!inv) { setStatus('Select an investigation first.'); return; }
+      const lines = [];
+      lines.push(`INVESTIGATION: ${inv.title}`);
+      lines.push(`Opened by: ${inv.created_by || 'Unknown'} on ${new Date(inv.created_at || Date.now()).toLocaleString()}`);
+      lines.push(`Tags: ${inv.tags?.join(', ') || 'none'}`);
+      lines.push('--- TIMELINE ---');
+      const sorted = (inv.entries || []).slice().sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0));
+      sorted.forEach((e, idx) => {
+        const when = new Date(e.ts || Date.now()).toLocaleString();
+        const head = `[${idx + 1}] ${when} • ${e.author || 'Unknown'} • ${e.kind === 'file' ? 'FILE' : 'MESSAGE'}`;
+        lines.push(head);
+        if (e.filename) lines.push(`File: ${e.filename} (${e.size ? Math.round(e.size/1024) + ' KB' : 'unknown'})`);
+        if (e.text) lines.push(e.text);
+        lines.push('');
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${inv.title.replace(/[^a-z0-9_-]+/gi, '_') || 'investigation'}_thread.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setStatus('Exported thread.');
+    });
 
     load();
     renderList();

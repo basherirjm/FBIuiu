@@ -625,6 +625,19 @@ select.field.small{ width:auto; padding:10px; }
 .admin-actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
 
 /* Investigations */
+.inv-toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+  flex-wrap:wrap;
+}
+.inv-meta-line{
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size:11px;
+}
 .inv-layout{
   display:grid;
   grid-template-columns: 280px 1fr;
